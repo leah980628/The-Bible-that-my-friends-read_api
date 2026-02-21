@@ -3,8 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>친구들이 들려주는 성경말씀</title>
+    
+    <!-- Mobile Web App Capable Settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    
+    <!-- Inline Manifest for Background Audio Support -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"친구들이 들려주는 성경말씀","short_name":"SCOC Player","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4fb.png","sizes":"72x72","type":"image/png"}]}' />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <style>
@@ -15,6 +25,8 @@
         padding: 0;
         overflow: hidden; /* App handles scrolling internally */
         background-color: #0f172a;
+        -webkit-touch-callout: none; /* iOS Safari touch callout disable */
+        user-select: none; /* Prevent text selection */
       }
     </style>
   <script type="importmap">
@@ -22,8 +34,7 @@
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
