@@ -886,50 +886,44 @@ export default function App() {
                                 </div>
                             </div>
 
-                              {/* 메인 컨트롤러: 모바일 중앙 정렬, PC 양끝 정렬 */}
-                              <div className="flex items-center justify-center md:justify-between bg-black/20 p-2 md:p-4 rounded-2xl w-full">
+                              {/* 메인 컨트롤러: PC에서는 3등분 그리드(md:grid-cols-3)를 사용하여 중앙 정렬 보장 */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 items-center bg-black/20 p-2 md:p-4 rounded-2xl w-full">
     
-                              {/* 1. 좌측 및 2. 중앙 그룹을 하나의 묶음으로 처리 (모바일 중앙 정렬을 위해) */}
-                              <div className="flex items-center justify-center md:justify-start md:flex-grow gap-4 md:gap-0">
-        
-                              {/* 1. 좌측 그룹 (셔플, 반복) */}
-                              <div className="flex items-center justify-center md:w-1/3 md:justify-start gap-2 md:gap-4">
-                              <button onClick={() => setIsShuffled(!isShuffled)} className={`p-2 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
-                                     🔀
-                              </button>
-                              <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-2 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
-                             {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
-                              </button>
-                          </div>
+                              {/* 1. 좌측 그룹 (셔플, 반복) - PC에서는 왼쪽 정렬 */}
+                              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4 order-2 md:order-1 mt-3 md:mt-0">
+                                  <button onClick={() => setIsShuffled(!isShuffled)} className={`p-2 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
+                                       🔀
+                                  </button>
+                                  <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-2 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
+                                        {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
+                                  </button>
+                              </div>
 
-                             {/* 2. 중앙 그룹 (이전, 재생, 다음) */}
-                             <div className="flex items-center justify-center md:w-1/3 gap-4 md:gap-8">
-                             <button onClick={handlePrev} className="p-2 text-gray-200 hover:text-white transition-colors">
-                                <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
-                            </button>
-                            {/* 컴퓨터에서 더 크게 보이도록 원형 버튼 크기 md:w-24 적용 */}
-                            <button onClick={handlePlayPause} className="w-14 h-14 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg md:shadow-xl transform active:scale-95 md:hover:scale-110 transition-all">
-                              <Icon name={isPlaying ? 'pause' : 'play'} className="w-8 h-8 md:w-14 md:h-14 fill-current"/>
-                            </button>
-                            <button onClick={handleNext} className="p-2 text-gray-200 hover:text-white transition-colors">
-                               <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
-                            </button>
-                         </div>
+                             {/* 2. 중앙 그룹 (이전, 재생, 다음) - PC에서 완벽한 중앙 배치 */}
+                             <div className="flex items-center justify-center gap-4 md:gap-8 order-1 md:order-2">
+                                 <button onClick={handlePrev} className="p-2 text-gray-200 hover:text-white transition-colors">
+                                     <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
+                                 </button>
+                                 <button onClick={handlePlayPause} className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg md:shadow-xl transform active:scale-95 md:hover:scale-110 transition-all">
+                                     <Icon name={isPlaying ? 'pause' : 'play'} className="w-10 h-10 md:w-14 md:h-14 fill-current"/>
+                                 </button>
+                                 <button onClick={handleNext} className="p-2 text-gray-200 hover:text-white transition-colors">
+                                     <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
+                                 </button>
+                            </div>
 
-                           {/* PC에서 중앙 정렬 균형을 맞추기 위한 빈 공간 (모바일은 숨김) */}
-                         <div className="hidden md:block md:w-1/3"></div>
-                    </div>
-
-                          {/* 3. 우측 그룹 (볼륨) - 모바일(hidden) 숨김, PC(md:flex) 표시 */}
-                          <div className="hidden md:flex items-center justify-end w-24 ml-4">
-                             <Icon name="volume" className="w-5 h-5 text-gray-400" />
-                          <input 
-                             type="range" min="0" max="1" step="0.01" value={volume} 
-                             onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                             className="w-full h-1.5 accent-cyan-400 cursor-pointer ml-2" 
-                            />
-                      </div>
-                  </div>
+                            {/* 3. 우측 그룹 (볼륨) - 모바일(hidden) 숨김, PC(md:flex) 오른쪽 정렬 */}
+                            <div className="hidden md:flex items-center justify-end gap-2 order-3">
+                               <Icon name="volume" className="w-5 h-5 text-gray-400" />
+                               <div className="w-24">
+                                  <input 
+                                     type="range" min="0" max="1" step="0.01" value={volume} 
+                                     onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                                     className="w-full h-1.5 accent-cyan-400 cursor-pointer block" 
+                                  />
+                              </div>
+                           </div>
+                       </div>
                           
                             <div className="flex items-center justify-between bg-black/20 p-2 rounded-xl">
                                 <div className="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar">
