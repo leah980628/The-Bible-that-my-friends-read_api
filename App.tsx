@@ -50,7 +50,6 @@ const formatTime = (seconds: number): string => {
 };
 
 const getImageUrl = (id: string, size: number) => {
-    // 16:9 비율을 위한 너비와 높이 계산 (기본 너비 1024px 확보)
     const targetWidth = Math.max(size, 1024);
     const targetHeight = Math.round(targetWidth * 9 / 16);
     
@@ -61,39 +60,34 @@ const getImageUrl = (id: string, size: number) => {
     }
     const seed = Math.abs(hash);
     
-    // 1. 긍정 프롬프트: 태초의 순수 자연 (문명의 흔적이 없는 풍경)
+    // 1. 긍정 프롬프트: '인공물'이 절대 나올 수 없는 원시적인 대자연으로 한정
     const prompts = [
-        "Ancient primordial forest, giant mossy trees, ethereal mist, cinematic lighting, 8k",
-        "Majestic snow-capped mountain peaks, untouched wilderness, crystal clear alpine lake",
-        "Deep ocean coral reef, vibrant tropical fish, turquoise water, sunlight rays underwater",
-        "Golden sand dunes in a vast desert under the milky way, starry night, cosmic atmosphere",
-        "Hidden tropical waterfall, lush exotic vegetation, pristine lagoon, paradise nature",
-        "Arctic glaciers and icebergs, dramatic cold lighting, deep blue sea, pure nature",
-        "Infinite field of wild flowers under a dramatic sunset sky, wide angle landscape"
+        "Ancient primordial forest with giant mossy stones and ethereal mist, no civilization",
+        "Majestic mountain range untouched by man, crystal clear alpine lake, prehistoric nature",
+        "Deep ocean coral reef with vibrant marine life, turquoise water, zero human presence",
+        "Empty desert dunes under a celestial milky way, silent prehistoric landscape",
+        "Isolated wild waterfall in a dense tropical jungle, ancient exotic plants, pristine lagoon",
+        "Arctic glaciers and massive icebergs in a pure blue ocean, dramatic cold wilderness",
+        "Infinite field of wild flowers under a dramatic sunset, untouched prehistoric meadow"
     ];
 
     const selectedPrompt = prompts[seed % prompts.length];
     
-    // 2. 강력한 부정 프롬프트: 사람, 신체, 기계, 인공물을 아주 세밀하게 나열
+    // 2. 강력한 부정 프롬프트: 제공해주신 이미지에 나온 모든 '현대적/인공적' 요소 차단
     const negativeKeywords = [
-        // 인물 및 신체 (실루엣, 그림자, 인영 포함)
-        "human, people, person, man, woman, child, baby, girl, boy, group of people, crowd, pedestrian",
-        "silhouette, shadow of person, reflection of person, humanoid, character, figure, portrait",
-        "face, eye, hand, finger, arm, leg, foot, hair, skin, body parts, anatomy, bone",
-        "clothes, fashion, outfit, dress, hat, shoes",
-        // 기계 및 기술 (부품 하나까지 차단)
-        "machine, machinery, robot, electronics, tech, gadget, wires, cables, computer, screen, lens",
-        "motor, engine, gear, bolt, metal plates, industrial, factory, laboratory, metallic textures",
-        "spaceship, car, vehicle, airplane, drone, cyborg, android",
-        // 문명 및 인공 건축물
-        "building, house, city, architecture, window, door, street, road, bridge, wall, fence",
-        "furniture, chair, table, plastic, glass, concrete, trash, sign, post, man-made objects",
-        // 품질 및 텍스트
-        "text, word, letter, watermark, logo, signature, alphabet, blurry, distorted, grainy, low quality"
+        // 인물 및 신체 (손, 얼굴, 실루엣, 군중)
+        "human, person, man, woman, child, baby, crowd, group of people, pedestrians, silhouette, face, hands, fingers, skin, hair, eyes, body parts, anatomy, portrait",
+        // 전자기기 및 기계 (노트북, 카메라, 렌즈, 전선)
+        "laptop, computer, notebook, pen, coffee cup, camera, lens, tripod, electronics, tech, gadget, wires, cables, screen, monitor, machinery, engine, motor",
+        // 문명 및 도시 인프라 (건물, 도로, 자전거, 자동차, 다리)
+        "building, skyscraper, house, architecture, window, city, urban, street, road, asphalt, pavement, bridge, wall, fence, post, streetlight, sign, logo, text",
+        "vehicle, car, automobile, truck, bicycle, bike, train, airplane, boat, ship, furniture, chair, desk, office, room, indoor",
+        // 인공 재질 및 품질 저하
+        "plastic, metal plates, concrete, trash, glass, clothing, fashion, outfit, blurry, distorted, grainy, low quality, watermark, signature"
     ].join(", ");
 
     // 3. 고정 상태 태그: 순수 풍경임을 강제로 정의
-    const statusTags = "strictly no people, zero humans, uninhabited, untouched nature, 100% wilderness, primeval landscape, cinematic, photorealistic, no man-made objects";
+    const statusTags = "strictly no people, zero humans, uninhabited wilderness, 100% pure nature, primeval landscape, cinematic lighting, national geographic style, highly detailed, 8k";
 
     // 최종 조합: 주제 + 상태 + 제외 키워드
     const finalPrompt = `${selectedPrompt}, ${statusTags}, avoid: ${negativeKeywords}`;
@@ -123,6 +117,7 @@ const AlbumArt = ({ trackId, size, className }: { trackId: string, size: number,
         />
     );
 };
+
 const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000];
 const visualizerModes: VisualizerMode[] = ['line', 'bars', 'wave', 'circle', 'dots'];
 
