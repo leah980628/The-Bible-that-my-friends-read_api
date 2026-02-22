@@ -886,48 +886,48 @@ export default function App() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between bg-black/20 p-2 md:p-4 rounded-2xl w-full">
-                                {/* 좌측: 셔플 & 반복 - EMOJI 복원 */}
-                                <div className="flex items-center justify-start flex-1 gap-2 md:gap-4">
-                                    <button onClick={() => setIsShuffled(!isShuffled)} className={`p-2 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`} title={isShuffled ? "셔플 끄기" : "셔플 켜기"}>
-                                        🔀
-                                    </button>
-                                    <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-2 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`} title="반복 모드 변경">
-                                        {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
-                                    </button>
-                                </div>
+                           {/* 메인 컨트롤러: 모바일 중앙 정렬(justify-center), PC 양끝 정렬(md:justify-between) */}
+                           <div className="flex flex-wrap items-center justify-center md:justify-between bg-black/20 p-2 md:p-4 rounded-2xl w-full gap-y-3">
+    
+                           {/* 1. 좌측 그룹 (셔플, 반복) - 모바일에서는 flex-none으로 설정해 중앙 정렬을 방해하지 않음 */}
+                          <div className="flex items-center justify-center md:justify-start md:flex-1 gap-2 md:gap-4 flex-none">
+                          <button onClick={() => setIsShuffled(!isShuffled)} className={`p-2 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
+                                🔀
+                          </button>
+                          <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-2 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
+                           {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
+                         </button>
+                      </div>
 
-                                {/* 중앙: 이전/재생/다음 - ICON 유지 */}
-                                <div className="flex items-center justify-center flex-1 gap-4 md:gap-6">
-                                    <button onClick={handlePrev} className="p-2 text-gray-200 hover:text-white transition-colors" title="이전 곡">
-                                        <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
-                                    </button>
-                                    <button onClick={handlePlayPause} className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all" title={isPlaying ? "일시정지" : "재생"}>
-                                        <Icon name={isPlaying ? 'pause' : 'play'} className="w-8 h-8 md:w-10 md:h-10 fill-current"/>
-                                    </button>
-                                    <button onClick={handleNext} className="p-2 text-gray-200 hover:text-white transition-colors" title="다음 곡">
-                                        <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
-                                    </button>
-                                </div>
+                        {/* 2. 중앙 그룹 (이전, 재생, 다음) */}
+                       <div className="flex items-center justify-center md:flex-1 gap-4 md:gap-6 flex-none">
+                       <button onClick={handlePrev} className="p-2 text-gray-200 hover:text-white transition-colors">
+                       <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
+                     </button>
+                       <button onClick={handlePlayPause} className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all">
+                       <Icon name={isPlaying ? 'pause' : 'play'} className="w-8 h-8 md:w-10 md:h-10 fill-current"/>
+                    </button>
+                     <button onClick={handleNext} className="p-2 text-gray-200 hover:text-white transition-colors">
+                     <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
+                   </button>
+                 </div>
 
-                                {/* 우측: 볼륨 조절 */}
-                                <div className="flex items-center justify-end flex-1 gap-2">
-                                    <Icon name="volume" className="w-5 h-5 text-gray-400" />
-                                    <div className="w-20 md:w-24">
-                                        <input 
-                                            type="range" 
-                                            min="0" 
-                                            max="1" 
-                                            step="0.01" 
-                                            value={volume} 
-                                            onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                                            className="w-full h-1.5 accent-cyan-400 cursor-pointer block" 
-                                            title="볼륨 조절"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
+                   {/* 3. 우측 그룹 (볼륨) */}
+                   <div className="flex items-center justify-center md:justify-end md:flex-1 gap-2 flex-none">
+                   <Icon name="volume" className="w-5 h-5 text-gray-400" />
+                  <div className="w-20 md:w-24">
+               <input 
+                   type="range" 
+                   min="0" 
+                   max="1" 
+                   step="0.01" 
+                   value={volume} 
+                   onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                   className="w-full h-1.5 accent-cyan-400 cursor-pointer block" 
+                   />
+              </div>
+           </div>
+        </div>
                             <div className="flex items-center justify-between bg-black/20 p-2 rounded-xl">
                                 <div className="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar">
                                     <button onClick={() => fileInputRef.current?.click()} className="p-2 sm:p-3 text-gray-400 hover:text-white flex-shrink-0" title="파일 불러오기"><Icon name="folder" /></button>
