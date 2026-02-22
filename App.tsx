@@ -50,7 +50,7 @@ const formatTime = (seconds: number): string => {
 };
 
 const getImageUrl = (id: string, size: number) => {
-    // 16:9 비율을 위한 너비와 높이 계산 (기본 너비를 1024px로 상향 조정하여 화질 확보)
+    // 16:9 비율을 위한 너비와 높이 계산 (기본 너비 1024px 확보)
     const targetWidth = Math.max(size, 1024);
     const targetHeight = Math.round(targetWidth * 9 / 16);
     
@@ -61,64 +61,55 @@ const getImageUrl = (id: string, size: number) => {
     }
     const seed = Math.abs(hash);
     
-    // 자연/풍경 위주의 프롬프트 (인물 배제)
+    // 1. 긍정 프롬프트: 태초의 순수 자연 (문명의 흔적이 없는 풍경)
     const prompts = [
-        "A lone tree on a hill at sunrise, god rays piercing through clouds, cinematic lighting, 8k",
-        "Calm sea at dusk with a path of moonlight on water, ethereal atmosphere, highly detailed",
-        "Close up of dew drops on a green leaf in a forest, morning mist, macro photography, professional",
-        "Snow capped peaks of the Himalayas, epic scale, vast landscape, national geographic style",
-        "Desert dunes under a starry night sky, milky way visible, lonely and majestic, deep colors",
-        "Grand Canyon at golden hour, majestic red rock layers, warm sunlight, photorealistic",
-        "Aurora Borealis over a frozen lake in Iceland, majestic green lights, starry night, professional photography",
-        "Swiss Alps mountain peaks, dramatic snowy mountains, clear blue sky, majestic landscape",
-        "Great Barrier Reef, vibrant coral underwater, turquoise clear water, realistic nature",
-        "Autumn forest in Kyoto, vibrant red maple leaves, warm sunlight filtering through",
-        "Victoria Falls, massive waterfall, mist rising, rainbows, powerful nature",
-        "Lavender fields in Provence, endless purple flowers, warm summer sunset",
-        "Antelope Canyon Arizona, smooth sandstone curves, beam of warm light, detailed texture",
-        "Salar de Uyuni Bolivia, mirror reflection on salt flats, sunset colors, vast and majestic"
+        "Ancient primordial forest, giant mossy trees, ethereal mist, cinematic lighting, 8k",
+        "Majestic snow-capped mountain peaks, untouched wilderness, crystal clear alpine lake",
+        "Deep ocean coral reef, vibrant tropical fish, turquoise water, sunlight rays underwater",
+        "Golden sand dunes in a vast desert under the milky way, starry night, cosmic atmosphere",
+        "Hidden tropical waterfall, lush exotic vegetation, pristine lagoon, paradise nature",
+        "Arctic glaciers and icebergs, dramatic cold lighting, deep blue sea, pure nature",
+        "Infinite field of wild flowers under a dramatic sunset sky, wide angle landscape"
     ];
 
     const selectedPrompt = prompts[seed % prompts.length];
     
-    // 사람, 신체 부위, 실루엣 등을 완벽하게 차단하기 위한 강력한 부정 프롬프트
-    const negativePrompts = [
-        // 1. 인물 및 신체 관련 (가장 강력하게 제외)
-        "human, people, person, man, woman, girl, boy, child, baby, toddler, infant, teen, adult, elderly",
-        "face, head, hair, eyes, nose, mouth, lips, ears, neck, shoulder, chest, torso, back",
-        "arm, hand, finger, thumb, leg, foot, toe, limb, muscle, skin, flesh, anatomy, biological",
-        "crowd, group, audience, pedestrian, traveler, tourist, inhabitant, resident, citizen",
-        "feminine, masculine, gender, personage, self",
-        
-        // 2. 형상 및 표현 방식 (실루엣, 그림자 등)
-        "silhouette, shadow of person, reflection of person, humanoid, character, figure, portrait, selfie, pose",
-        "statue, sculpture, mannequin, doll, robot, cyborg, angel, demon, monster, ghost, spirit",
-        "clothing, shirt, pants, dress, hat, shoes, glasses, accessories, fashion, uniform",
-        
-        // 3. 인공물 및 문명 (자연 풍경 유지를 위해)
-        "building, house, city, architecture, vehicle, car, road, street, indoor, furniture, room",
-        "machine, machinery, engine, electronics, technology, wires, cables, gadgets",
-        
-        // 4. 텍스트 및 품질 저하
-        "text, signature, watermark, logo, typography, username, words, letters",
-        "ugly, deformed, disfigured, mutation, blurry, low quality, grainy, out of focus, bad anatomy, extra limbs"
+    // 2. 강력한 부정 프롬프트: 사람, 신체, 기계, 인공물을 아주 세밀하게 나열
+    const negativeKeywords = [
+        // 인물 및 신체 (실루엣, 그림자, 인영 포함)
+        "human, people, person, man, woman, child, baby, girl, boy, group of people, crowd, pedestrian",
+        "silhouette, shadow of person, reflection of person, humanoid, character, figure, portrait",
+        "face, eye, hand, finger, arm, leg, foot, hair, skin, body parts, anatomy, bone",
+        "clothes, fashion, outfit, dress, hat, shoes",
+        // 기계 및 기술 (부품 하나까지 차단)
+        "machine, machinery, robot, electronics, tech, gadget, wires, cables, computer, screen, lens",
+        "motor, engine, gear, bolt, metal plates, industrial, factory, laboratory, metallic textures",
+        "spaceship, car, vehicle, airplane, drone, cyborg, android",
+        // 문명 및 인공 건축물
+        "building, house, city, architecture, window, door, street, road, bridge, wall, fence",
+        "furniture, chair, table, plastic, glass, concrete, trash, sign, post, man-made objects",
+        // 품질 및 텍스트
+        "text, word, letter, watermark, logo, signature, alphabet, blurry, distorted, grainy, low quality"
     ].join(", ");
 
-    // Positive Prompt에도 사람 없음을 강조
-    const positiveSuffix = "no people, no humans, uninhabited, pure landscape, nature only, scenery, deserted, wilderness, 8k, photorealistic, cinematic lighting, award winning";
+    // 3. 고정 상태 태그: 순수 풍경임을 강제로 정의
+    const statusTags = "strictly no people, zero humans, uninhabited, untouched nature, 100% wilderness, primeval landscape, cinematic, photorealistic, no man-made objects";
 
-    // 프롬프트 조합: 주제 + 강조 + 부정 키워드(모델에 따라 --no 문법 혹은 텍스트 내 포함)
-    // Pollinations는 텍스트 기반이므로 긍정 프롬프트에 'no people'을 넣고, 추가적으로 뒤에 제외 키워드를 나열하여 가중치를 낮춥니다.
-    const encodedPrompt = encodeURIComponent(`${selectedPrompt}, ${positiveSuffix}, exclude: ${negativePrompts}`);
+    // 최종 조합: 주제 + 상태 + 제외 키워드
+    const finalPrompt = `${selectedPrompt}, ${statusTags}, avoid: ${negativeKeywords}`;
+    const encodedPrompt = encodeURIComponent(finalPrompt);
+
     return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&seed=${seed}&nologo=true`;
 };
 
 const AlbumArt = ({ trackId, size, className }: { trackId: string, size: number, className?: string }) => {
     const primaryUrl = useMemo(() => getImageUrl(trackId, size), [trackId, size]);
     const [src, setSrc] = useState(primaryUrl);
-    useEffect(() => { setSrc(getImageUrl(trackId, size)); }, [trackId, size]);
     
-    // Fallback 이미지도 16:9 비율로 설정
+    useEffect(() => { 
+        setSrc(getImageUrl(trackId, size)); 
+    }, [trackId, size]);
+    
     const fallbackWidth = Math.max(size, 1024);
     const fallbackHeight = Math.round(fallbackWidth * 9 / 16);
 
@@ -126,13 +117,12 @@ const AlbumArt = ({ trackId, size, className }: { trackId: string, size: number,
         <img 
             src={src} 
             alt="Album Art" 
-            className={`${className} object-cover bg-gray-700`} 
+            className={`${className} object-cover bg-gray-900 transition-opacity duration-500`} 
             onError={() => setSrc(`https://picsum.photos/seed/${trackId}/${fallbackWidth}/${fallbackHeight}`)}
             loading="lazy"
         />
     );
 };
-
 const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000];
 const visualizerModes: VisualizerMode[] = ['line', 'bars', 'wave', 'circle', 'dots'];
 
