@@ -886,44 +886,48 @@ export default function App() {
                                 </div>
                             </div>
 
-                              {/* 메인 컨트롤러: PC에서는 3등분 그리드(md:grid-cols-3)를 사용하여 중앙 정렬 보장 */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 items-center bg-black/20 p-2 md:p-4 rounded-2xl w-full">
+                              {/* 메인 컨트롤러: 삼성폰 등 모바일에서도 겹치지 않게 최적화 */}
+                              <div className="flex flex-col md:grid md:grid-cols-3 items-center bg-black/20 p-3 md:p-4 rounded-2xl w-full">
     
-                              {/* 1. 좌측 그룹 (셔플, 반복) - PC에서는 왼쪽 정렬 */}
-                              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4 order-2 md:order-1 mt-3 md:mt-0">
-                                  <button onClick={() => setIsShuffled(!isShuffled)} className={`p-2 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
-                                       🔀
-                                  </button>
-                                  <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-2 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
-                                        {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
-                                  </button>
+                             {/* 모바일에서 한 줄로 모으기 위한 컨테이너 */}
+                              <div className="flex items-center justify-center w-full md:contents gap-x-3 sm:gap-x-6">
+        
+                             {/* 1. 좌측 그룹 (셔플, 반복) */}
+                             <div className="flex items-center justify-center md:justify-start md:flex-1 gap-1 md:gap-4 flex-shrink-0">
+                                <button onClick={() => setIsShuffled(!isShuffled)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
+                                          🔀
+                                </button>
+                                <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
+                                         {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
+                                </button>
                               </div>
 
-                             {/* 2. 중앙 그룹 (이전, 재생, 다음) - PC에서 완벽한 중앙 배치 */}
-                             <div className="flex items-center justify-center gap-4 md:gap-8 order-1 md:order-2">
-                                 <button onClick={handlePrev} className="p-2 text-gray-200 hover:text-white transition-colors">
-                                     <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
-                                 </button>
-                                 <button onClick={handlePlayPause} className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg md:shadow-xl transform active:scale-95 md:hover:scale-110 transition-all">
-                                     <Icon name={isPlaying ? 'pause' : 'play'} className="w-10 h-10 md:w-14 md:h-14 fill-current"/>
-                                 </button>
-                                 <button onClick={handleNext} className="p-2 text-gray-200 hover:text-white transition-colors">
-                                     <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
-                                 </button>
-                            </div>
+                           {/* 2. 중앙 그룹 (이전, 재생, 다음) */}
+                           <div className="flex items-center justify-center md:flex-1 gap-3 md:gap-8 flex-shrink-0">
+                              <button onClick={handlePrev} className="p-1 text-gray-200 active:text-cyan-400">
+                                  <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
+                              </button>
+                              <button onClick={handlePlayPause} className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg transform active:scale-90 md:hover:scale-110 transition-all">
+                                  <Icon name={isPlaying ? 'pause' : 'play'} className="w-9 h-9 md:w-14 md:h-14 fill-current"/>
+                              </button>
+                              <button onClick={handleNext} className="p-1 text-gray-200 active:text-cyan-400">
+                                  <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
+                              </button>
+                          </div>
+                      </div>
 
-                            {/* 3. 우측 그룹 (볼륨) - 모바일(hidden) 숨김, PC(md:flex) 오른쪽 정렬 */}
-                            <div className="hidden md:flex items-center justify-end gap-2 order-3">
+                          {/* 3. 우측 그룹 (볼륨) - PC에서만 표시 */}
+                          <div className="hidden md:flex items-center justify-end gap-2 md:flex-1">
                                <Icon name="volume" className="w-5 h-5 text-gray-400" />
-                               <div className="w-24">
-                                  <input 
-                                     type="range" min="0" max="1" step="0.01" value={volume} 
-                                     onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                                     className="w-full h-1.5 accent-cyan-400 cursor-pointer block" 
-                                  />
-                              </div>
-                           </div>
-                       </div>
+                          <div className="w-24">
+                             <input 
+                                type="range" min="0" max="1" step="0.01" value={volume} 
+                                onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                                className="w-full h-1.5 accent-cyan-400 cursor-pointer" 
+                            />
+                         </div>
+                     </div>
+                 </div>
                           
                             <div className="flex items-center justify-between bg-black/20 p-2 rounded-xl">
                                 <div className="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar">
