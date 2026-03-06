@@ -4,8 +4,9 @@ import { Visualizer, VisualizerMode } from './components/Visualizer';
 import { Equalizer } from './components/Equalizer';
 import { Track, RepeatMode } from './types';
 
-const DB_NAME = 'SCOC_BiblePlayer_DB';
-const STORE_NAME = 'tracks';
+// ✅ Cloudflare R2 공개 URL
+const R2_BASE_URL = 'https://pub-671da4d0ad7f4987a1126bed7db40f70.r2.dev';
+
 const STORAGE_KEY_SETTINGS = 'scoc_settings';
 const STORAGE_KEY_LAST_INDEX = 'scoc_last_index';
 const STORAGE_KEY_LAST_TIME = 'scoc_last_time';
@@ -28,18 +29,40 @@ const bibleNames: Record<string, string> = {
   "65": "유다서", "66": "요한계시록"
 };
 
-const openDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+// 성경 각 권의 장 수
+const bibleChapters: Record<string, number> = {
+  "01":50,"02":40,"03":27,"04":36,"05":34,"06":24,"07":21,"08":4,
+  "09":31,"10":24,"11":22,"12":25,"13":29,"14":36,"15":10,"16":13,
+  "17":10,"18":42,"19":150,"20":31,"21":12,"22":8,"23":66,"24":52,
+  "25":5,"26":48,"27":12,"28":14,"29":3,"30":9,"31":1,"32":4,
+  "33":7,"34":3,"35":3,"36":3,"37":2,"38":14,"39":4,
+  "40":28,"41":16,"42":24,"43":21,"44":28,"45":16,"46":16,"47":13,
+  "48":6,"49":6,"50":4,"51":4,"52":5,"53":3,"54":6,"55":4,
+  "56":3,"57":1,"58":13,"59":5,"60":5,"61":3,"62":5,"63":1,
+  "64":1,"65":1,"66":22
+};
+
+// ✅ R2에서 전체 성경 트랙 목록 생성 (파일이 없어도 목록은 만들어둠)
+const loadTracksFromR2 = (): Track[] => {
+  const tracks: Track[] = [];
+  Object.entries(bibleNames).forEach(([bookCode, bookName]) => {
+    const totalChapters = bibleChapters[bookCode];
+    if (!totalChapters) return;
+    for (let chapter = 1; chapter <= totalChapters; chapter++) {
+      const chapterStr = String(chapter).padStart(3, '0');
+      const fileName = `${bookCode}_${chapterStr}.mp3`;
+      const url = `${R2_BASE_URL}/${fileName}`;
+      tracks.push({
+        id: `r2-${bookCode}-${chapterStr}`,
+        file: new File([], fileName),
+        name: `${bookName} ${chapter}장`,
+        artist: '친구들이 들려주는 성경말씀',
+        duration: 0,
+        url
+      });
+    }
+  });
+  return tracks;
 };
 
 const formatTime = (seconds: number): string => {
@@ -60,7 +83,6 @@ const getImageUrl = (id: string, size: number) => {
     }
     const seed = Math.abs(hash);
     
-    // 1. 긍정 프롬프트: '인공물'이 절대 나올 수 없는 원시적인 대자연으로 한정
     const prompts = [
         "Ancient primordial forest with giant mossy stones and ethereal mist, no civilization",
         "Majestic mountain range untouched by man, crystal clear alpine lake, prehistoric nature",
@@ -73,23 +95,15 @@ const getImageUrl = (id: string, size: number) => {
 
     const selectedPrompt = prompts[seed % prompts.length];
     
-    // 2. 강력한 부정 프롬프트: 제공해주신 이미지에 나온 모든 '현대적/인공적' 요소 차단
     const negativeKeywords = [
-        // 인물 및 신체 (손, 얼굴, 실루엣, 군중)
         "human, person, man, woman, child, baby, crowd, group of people, pedestrians, silhouette, face, hands, fingers, skin, hair, eyes, body parts, anatomy, portrait",
-        // 전자기기 및 기계 (노트북, 카메라, 렌즈, 전선)
         "laptop, computer, notebook, pen, coffee cup, camera, lens, tripod, electronics, tech, gadget, wires, cables, screen, monitor, machinery, engine, motor",
-        // 문명 및 도시 인프라 (건물, 도로, 자전거, 자동차, 다리)
         "building, skyscraper, house, architecture, window, city, urban, street, road, asphalt, pavement, bridge, wall, fence, post, streetlight, sign, logo, text",
         "vehicle, car, automobile, truck, bicycle, bike, train, airplane, boat, ship, furniture, chair, desk, office, room, indoor",
-        // 인공 재질 및 품질 저하
         "plastic, metal plates, concrete, trash, glass, clothing, fashion, outfit, blurry, distorted, grainy, low quality, watermark, signature"
     ].join(", ");
 
-    // 3. 고정 상태 태그: 순수 풍경임을 강제로 정의
     const statusTags = "strictly no people, zero humans, uninhabited wilderness, 100% pure nature, primeval landscape, cinematic lighting, national geographic style, highly detailed, 8k";
-
-    // 최종 조합: 주제 + 상태 + 제외 키워드
     const finalPrompt = `${selectedPrompt}, ${statusTags}, avoid: ${negativeKeywords}`;
     const encodedPrompt = encodeURIComponent(finalPrompt);
 
@@ -121,7 +135,6 @@ const AlbumArt = ({ trackId, size, className }: { trackId: string, size: number,
 const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000];
 const visualizerModes: VisualizerMode[] = ['line', 'bars', 'wave', 'circle', 'dots'];
 
-// Fallback용 텍스트 로고 컴포넌트
 const ScocTextLogo = ({ className }: { className?: string }) => (
   <span className={`${className} text-xl font-bold tracking-tight text-white`}>SCOC</span>
 );
@@ -136,10 +149,7 @@ export default function App() {
     const [repeatMode, setRepeatMode] = useState<RepeatMode>(RepeatMode.NONE);
     const [isShuffled, setIsShuffled] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    
-    // 모바일에서는 기본적으로 사이드바 닫기, 데스크탑(768px 이상)에서는 열기
     const [isSidebarVisible, setIsSidebarVisible] = useState(window.innerWidth >= 768);
-    
     const [showVisualizer, setShowVisualizer] = useState(true);
     const [visualizerModeIndex, setVisualizerModeIndex] = useState(0);
     const [isEqVisible, setIsEqVisible] = useState(false);
@@ -148,7 +158,6 @@ export default function App() {
     const [logoError, setLogoError] = useState(false);
 
     const audioRef = useRef<HTMLAudioElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
     const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
     const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
@@ -159,92 +168,60 @@ export default function App() {
         stateRef.current = { playlist, currentTrackIndex, isShuffled, repeatMode, isPlaying };
     }, [playlist, currentTrackIndex, isShuffled, repeatMode, isPlaying]);
 
-    // 화면 크기 변경 시 사이드바 상태 자동 조정 (선택 사항)
+    // ✅ 앱 시작 시 R2에서 트랙 목록 자동 로드
     useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth >= 768) {
-                // 데스크탑으로 커지면 사이드바 보이기 (사용자가 닫았을 수 있으므로 강제하진 않음)
-                // setIsSidebarVisible(true); 
-            }
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+        const tracks = loadTracksFromR2();
+        setPlaylist(tracks);
 
-    // IndexedDB 로드 및 상태 복구
-    useEffect(() => {
-        const loadFromDB = async () => {
-            try {
-                const db = await openDB();
-                const transaction = db.transaction(STORE_NAME, 'readonly');
-                const store = transaction.objectStore(STORE_NAME);
-                const request = store.getAll();
-                
-                request.onsuccess = () => {
-                    let tracks: Track[] = request.result.map((item: any) => ({
-                        ...item,
-                        url: URL.createObjectURL(item.file)
-                    }));
-                    
-                    tracks.sort((a, b) => a.file.name.localeCompare(b.file.name));
+        // 설정 복구
+        try {
+            const savedSettings = JSON.parse(localStorage.getItem(STORAGE_KEY_SETTINGS) || '{}');
+            if (savedSettings.volume !== undefined) setVolume(savedSettings.volume);
+            if (savedSettings.repeatMode !== undefined) setRepeatMode(savedSettings.repeatMode);
+            if (savedSettings.isShuffled !== undefined) setIsShuffled(savedSettings.isShuffled);
+            if (savedSettings.visualizerModeIndex !== undefined) setVisualizerModeIndex(savedSettings.visualizerModeIndex);
+            if (savedSettings.showVisualizer !== undefined) setShowVisualizer(savedSettings.showVisualizer);
+            if (savedSettings.isEqVisible !== undefined) setIsEqVisible(savedSettings.isEqVisible);
+            if (savedSettings.eqGains) setEqGains(savedSettings.eqGains);
 
-                    if (tracks.length > 0) {
-                        setPlaylist(tracks);
+            const lastIndex = localStorage.getItem(STORAGE_KEY_LAST_INDEX);
+            const lastTime = localStorage.getItem(STORAGE_KEY_LAST_TIME);
 
-                        // --- 상태 복구 로직 (설정 및 마지막 재생 위치) ---
-                        try {
-                            const savedSettings = JSON.parse(localStorage.getItem(STORAGE_KEY_SETTINGS) || '{}');
-                            if (savedSettings.volume !== undefined) setVolume(savedSettings.volume);
-                            if (savedSettings.repeatMode !== undefined) setRepeatMode(savedSettings.repeatMode);
-                            if (savedSettings.isShuffled !== undefined) setIsShuffled(savedSettings.isShuffled);
-                            if (savedSettings.visualizerModeIndex !== undefined) setVisualizerModeIndex(savedSettings.visualizerModeIndex);
-                            if (savedSettings.showVisualizer !== undefined) setShowVisualizer(savedSettings.showVisualizer);
-                            if (savedSettings.isEqVisible !== undefined) setIsEqVisible(savedSettings.isEqVisible);
-                            if (savedSettings.eqGains) setEqGains(savedSettings.eqGains);
-
-                            const lastIndex = localStorage.getItem(STORAGE_KEY_LAST_INDEX);
-                            const lastTime = localStorage.getItem(STORAGE_KEY_LAST_TIME);
-
-                            if (lastIndex !== null) {
-                                const idx = parseInt(lastIndex);
-                                if (tracks[idx]) {
-                                    setCurrentTrackIndex(idx);
-                                    
-                                    // Audio Element 설정
+            if (lastIndex !== null) {
+                const idx = parseInt(lastIndex);
+                if (tracks[idx]) {
+                    setCurrentTrackIndex(idx);
+                    if (audioRef.current) {
+                        audioRef.current.src = tracks[idx].url;
+                        if (lastTime) {
+                            const t = parseFloat(lastTime);
+                            if (!isNaN(t)) {
+                                const setTimeOnce = () => {
                                     if (audioRef.current) {
-                                        audioRef.current.src = tracks[idx].url;
-                                        if (lastTime) {
-                                            const t = parseFloat(lastTime);
-                                            if (!isNaN(t)) {
-                                                // 메타데이터 로드 후 시간 설정 (안전성 확보)
-                                                const setTimeOnce = () => {
-                                                    if (audioRef.current) {
-                                                        audioRef.current.currentTime = t;
-                                                        setCurrentTime(t);
-                                                    }
-                                                };
-                                                audioRef.current.addEventListener('loadedmetadata', setTimeOnce, { once: true });
-                                            }
-                                        }
+                                        audioRef.current.currentTime = t;
+                                        setCurrentTime(t);
                                     }
-                                }
+                                };
+                                audioRef.current.addEventListener('loadedmetadata', setTimeOnce, { once: true });
                             }
-                        } catch (e) {
-                            console.error("Failed to restore state:", e);
                         }
                     }
-                };
-            } catch (err) {
-                console.error("DB Load Error:", err);
+                }
+            } else {
+                // 처음 방문 시 첫 번째 곡 선택
+                setCurrentTrackIndex(0);
+                if (audioRef.current && tracks[0]) {
+                    audioRef.current.src = tracks[0].url;
+                }
             }
-        };
-        loadFromDB();
+        } catch (e) {
+            console.error("Failed to restore state:", e);
+            setCurrentTrackIndex(0);
+        }
     }, []);
 
     const updateMediaSessionMetadata = useCallback((track: Track) => {
         if (!('mediaSession' in navigator)) return;
-        
-        // 메타데이터 업데이트 (16:9 비율 고려한 sizes 설정, 실제로는 API가 주는 이미지에 따라감)
         navigator.mediaSession.metadata = new MediaMetadata({
             title: track.name,
             artist: track.artist,
@@ -257,20 +234,15 @@ export default function App() {
         });
     }, []);
 
-    // 설정 값 변경 시 저장
+    // 설정 저장
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
-            volume,
-            repeatMode,
-            isShuffled,
-            showVisualizer,
-            visualizerModeIndex,
-            isEqVisible,
-            eqGains
+            volume, repeatMode, isShuffled, showVisualizer,
+            visualizerModeIndex, isEqVisible, eqGains
         }));
     }, [volume, repeatMode, isShuffled, showVisualizer, visualizerModeIndex, isEqVisible, eqGains]);
 
-    // 재생 상태(곡 인덱스, 시간) 저장 로직
+    // 재생 위치 저장
     useEffect(() => {
         const savePlaybackState = () => {
             if (currentTrackIndex !== null) {
@@ -287,7 +259,6 @@ export default function App() {
 
         window.addEventListener('beforeunload', savePlaybackState);
         document.addEventListener('visibilitychange', savePlaybackState);
-        
         const interval = setInterval(savePlaybackState, 5000);
 
         return () => {
@@ -297,28 +268,12 @@ export default function App() {
         };
     }, [currentTrackIndex]);
 
-    // [신규 기능] 파일이 로드되었는데 현재 선택된 곡이 없다면 자동으로 첫 번째 곡 선택
-    useEffect(() => {
-        if (playlist.length > 0 && currentTrackIndex === null) {
-            setCurrentTrackIndex(0);
-            if (audioRef.current && playlist[0]) {
-                audioRef.current.src = playlist[0].url;
-                updateMediaSessionMetadata(playlist[0]);
-            }
-        }
-    }, [playlist, currentTrackIndex, updateMediaSessionMetadata]);
-
     const setupAudioContext = useCallback(() => {
         if (!audioRef.current) return null;
         if (audioContext && audioContext.state !== 'closed') return audioContext;
 
         const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-        const context = new Ctx({ 
-            latencyHint: 'playback',
-            sampleRate: 44100 
-        });
-        
-        // 중요: 오디오 컨텍스트가 가비지 컬렉션되지 않도록 window 객체에 할당 (디버깅용 겸 안정성)
+        const context = new Ctx({ latencyHint: 'playback', sampleRate: 44100 });
         (window as any).scocAudioContext = context;
 
         const source = context.createMediaElementSource(audioRef.current);
@@ -369,7 +324,6 @@ export default function App() {
         updateMediaSessionMetadata(track);
         const ctx = setupAudioContext();
         
-        // iOS 백그라운드 재생 핵심: 컨텍스트가 중단되어 있다면 재생 시도 시 깨운다.
         if (ctx && ctx.state === 'suspended') {
             await ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
         }
@@ -385,7 +339,6 @@ export default function App() {
             const playPromise = audio.play();
             if (playPromise !== undefined) {
                 await playPromise;
-                // 재생 성공 시 MediaSession 상태 업데이트
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             }
         } catch (err: any) {
@@ -403,21 +356,14 @@ export default function App() {
 
         if (stateRef.current.isPlaying) {
             audio.pause();
-            // [중요] 일시정지 시 AudioContext를 suspend하여 오디오 버퍼 글리치(반복) 현상 제거
-            if (ctx && ctx.state === 'running') {
-                await ctx.suspend();
-            }
+            if (ctx && ctx.state === 'running') await ctx.suspend();
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         } else {
             if (stateRef.current.currentTrackIndex === null) {
                 await playTrack(0);
                 return;
             }
-
-            if (ctx && ctx.state === 'suspended') {
-                await ctx.resume().catch(() => {});
-            }
-
+            if (ctx && ctx.state === 'suspended') await ctx.resume().catch(() => {});
             try {
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
@@ -435,8 +381,7 @@ export default function App() {
         if (playlist.length === 0) return;
 
         if (isShuffled) {
-            const nextIndex = Math.floor(Math.random() * playlist.length);
-            playTrack(nextIndex);
+            playTrack(Math.floor(Math.random() * playlist.length));
         } else {
             const currentTrackId = playlist[currentTrackIndex || 0]?.id;
             const currentDisplayIndex = displayedPlaylist.findIndex(t => t.id === currentTrackId);
@@ -451,7 +396,6 @@ export default function App() {
                 if (repeatMode === RepeatMode.ALL) {
                     nextDisplayIndex = 0;
                 } else {
-                    // 마지막 곡이고 반복 없음이면 정지
                     if (audioRef.current) audioRef.current.pause();
                     setIsPlaying(false);
                     return;
@@ -472,9 +416,7 @@ export default function App() {
         const currentDisplayIndex = displayedPlaylist.findIndex(t => t.id === currentTrackId);
 
         let prevDisplayIndex = currentDisplayIndex - 1;
-        if (prevDisplayIndex < 0) {
-            prevDisplayIndex = displayedPlaylist.length - 1;
-        }
+        if (prevDisplayIndex < 0) prevDisplayIndex = displayedPlaylist.length - 1;
 
         const prevTrack = displayedPlaylist[prevDisplayIndex];
         const originalIndex = playlist.findIndex(t => t.id === prevTrack.id);
@@ -488,21 +430,17 @@ export default function App() {
         }
     }, []);
 
-    // Media Session API 설정 강화
     useEffect(() => {
         if (!('mediaSession' in navigator)) return;
         const audio = audioRef.current;
 
-        // 잠금 화면에서 재생 버튼 눌렀을 때의 핸들러
         navigator.mediaSession.setActionHandler('play', async () => {
-             // 중요: 백그라운드/잠금화면에서 오디오 컨텍스트가 죽어있으면 살려야 소리가 남
              if (audioContext && audioContext.state === 'suspended') await audioContext.resume();
              audio?.play().catch(() => {});
              navigator.mediaSession.playbackState = 'playing';
         });
         navigator.mediaSession.setActionHandler('pause', async () => {
              audio?.pause();
-             // 잠금화면 등에서 일시정지 시에도 Context suspend 처리
              if (audioContext && audioContext.state === 'running') await audioContext.suspend();
              navigator.mediaSession.playbackState = 'paused';
         });
@@ -519,12 +457,10 @@ export default function App() {
         };
     }, [handleNext, handlePrev, handleSeek, audioContext]);
 
-    // Visibility Change 및 Background Keep Alive 처리
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
 
-        // 2초마다 체크하여 백그라운드에서 컨텍스트가 죽지 않도록 관리
         const keepAliveInterval = setInterval(() => {
             if (stateRef.current.isPlaying && audioContext && audioContext.state === 'suspended') {
                 audioContext.resume().catch(() => {});
@@ -532,17 +468,8 @@ export default function App() {
         }, 2000);
 
         const handleVisibilityChange = () => {
-            // 화면이 보이지 않게 되어도(백그라운드), 재생 중이면 절대 pause 하지 않음.
-            // 오히려 iOS Safari 이슈 방지를 위해 컨텍스트가 살아있는지 확인.
-            if (document.visibilityState === 'hidden') {
-                if (stateRef.current.isPlaying && audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume().catch(() => {});
-                }
-            } else if (document.visibilityState === 'visible') {
-                // 화면이 다시 켜졌을 때 동기화
-                if (stateRef.current.isPlaying && audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume().catch(() => {});
-                }
+            if (stateRef.current.isPlaying && audioContext && audioContext.state === 'suspended') {
+                audioContext.resume().catch(() => {});
             }
         };
 
@@ -550,7 +477,6 @@ export default function App() {
 
         const onTimeUpdate = () => {
             setCurrentTime(audio.currentTime);
-            // MediaSession 위치 정보 업데이트 (잠금화면 프로그레스 바)
             if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && !isNaN(audio.duration)) {
                 try {
                     navigator.mediaSession.setPositionState({
@@ -606,7 +532,6 @@ export default function App() {
         });
     }, [eqGains, audioContext]);
 
-    // Wake Lock (화면 꺼짐 방지) - 비디오가 아닌 오디오 앱이지만, 사용자가 화면을 보고 있을 때 유용
     useEffect(() => {
         const requestWakeLock = async () => {
             if ('wakeLock' in navigator && isPlaying) {
@@ -622,179 +547,6 @@ export default function App() {
             wakeLockRef.current = null; 
         }
     }, [isPlaying]);
-
-    const handleDeleteTrack = async (e: React.MouseEvent, trackId: string) => {
-        e.stopPropagation();
-        try {
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            store.delete(trackId);
-            
-            transaction.oncomplete = () => {
-                setPlaylist(prev => {
-                    const deletedIndex = prev.findIndex(t => t.id === trackId);
-                    const newPlaylist = prev.filter(t => t.id !== trackId);
-                    
-                    if (currentTrackIndex !== null) {
-                        const currentTrack = prev[currentTrackIndex];
-                        if (currentTrack && currentTrack.id === trackId) {
-                            if (audioRef.current) {
-                                audioRef.current.pause();
-                                audioRef.current.src = "";
-                            }
-                            setIsPlaying(false);
-                            setCurrentTrackIndex(null);
-                        } else if (deletedIndex < currentTrackIndex) {
-                            setCurrentTrackIndex(currentTrackIndex - 1);
-                        }
-                    }
-                    return newPlaylist;
-                });
-            };
-        } catch (err) {
-            console.error("Delete Error:", err);
-        }
-    };
-
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const fileList = event.target.files;
-        if (!fileList || fileList.length === 0) return;
-
-        const files = Array.from(fileList) as File[];
-        const db = await openDB();
-        
-        const tracksToAdd: Track[] = files.map((file, i) => {
-            const url = URL.createObjectURL(file);
-            const fileName = file.name.replace(/\.[^/.]+$/, "");
-            let trackName = fileName;
-            
-            // 성경 파일명 패턴 분석 (예: 42_001.mp3 -> 누가복음 1장)
-            const match = fileName.match(/^(\d{2})[_.-](\d+)/);
-            if (match) {
-                const bookCode = match[1];
-                const chapterStr = match[2];
-                const bookName = bibleNames[bookCode];
-                if (bookName) {
-                     const chapter = parseInt(chapterStr, 10);
-                     trackName = `${bookName} ${chapter}장`;
-                }
-            }
-            
-            return {
-                id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${i}`,
-                file,
-                name: trackName,
-                artist: 'Unknown Artist',
-                duration: 0,
-                url
-            };
-        });
-
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        tracksToAdd.forEach(t => {
-            const { url, ...saveData } = t; 
-            store.put(saveData);
-        });
-
-        setPlaylist(prev => {
-            const updated = [...prev, ...tracksToAdd].sort((a, b) => a.file.name.localeCompare(b.file.name));
-            // 자동 재생/선택 로직은 useEffect로 이동됨
-            return updated;
-        });
-
-        tracksToAdd.forEach(track => {
-            const tempAudio = new Audio();
-            tempAudio.src = track.url;
-            tempAudio.onloadedmetadata = async () => {
-                const dur = tempAudio.duration;
-                setPlaylist(prev => prev.map(t => t.id === track.id ? { ...t, duration: dur } : t));
-                
-                const upTx = db.transaction(STORE_NAME, 'readwrite');
-                const upStore = upTx.objectStore(STORE_NAME);
-                const req = upStore.get(track.id);
-                req.onsuccess = () => {
-                   if(req.result) {
-                       req.result.duration = dur;
-                       upStore.put(req.result);
-                   }
-                };
-                tempAudio.src = '';
-            };
-
-            const jsmediatags = (window as any).jsmediatags;
-            if (jsmediatags) {
-                jsmediatags.read(track.file, {
-                    onSuccess: (tag: any) => {
-                        const { title, artist: tagArtist } = tag.tags;
-                        if (title) { 
-                            setPlaylist(prev => prev.map(t => t.id === track.id ? { 
-                                ...t, 
-                                name: title, 
-                                artist: tagArtist || t.artist 
-                            } : t));
-
-                            const upTx = db.transaction(STORE_NAME, 'readwrite');
-                            const upStore = upTx.objectStore(STORE_NAME);
-                            const req = upStore.get(track.id);
-                            req.onsuccess = () => {
-                                const data = req.result;
-                                if (data) {
-                                    data.name = title;
-                                    data.artist = tagArtist || data.artist;
-                                    upStore.put(data);
-                                }
-                            };
-                        }
-                    },
-                    onError: (error: any) => {
-                        console.log('jsmediatags error:', error);
-                    }
-                });
-            }
-        });
-
-        event.target.value = '';
-    }, []);
-
-    const handleClearPlaylist = useCallback(async () => {
-        if (playlist.length === 0) return;
-        
-        if (!confirm("모든 파일을 삭제하고 앱을 초기화하시겠습니까?")) return;
-
-        try {
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            store.clear();
-            
-            transaction.oncomplete = () => {
-                setPlaylist([]);
-                setCurrentTrackIndex(null);
-                setIsPlaying(false);
-                setCurrentTime(0);
-                setDuration(0);
-                setSearchTerm("");
-
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.src = "";
-                    audioRef.current.load();
-                }
-                
-                localStorage.removeItem(STORAGE_KEY_LAST_INDEX);
-                localStorage.removeItem(STORAGE_KEY_LAST_TIME);
-
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = null;
-                    navigator.mediaSession.playbackState = 'none';
-                }
-            };
-        } catch (err) {
-            console.error("Reset Error:", err);
-        }
-    }, [playlist]);
 
     const currentTrack = useMemo(() => {
         return currentTrackIndex !== null && playlist[currentTrackIndex] ? playlist[currentTrackIndex] : null;
@@ -845,7 +597,6 @@ export default function App() {
                                         <p className="font-semibold truncate">{track.name}</p>
                                         <p className="text-sm text-gray-400 truncate">{track.artist}</p>
                                     </div>
-                                    <button onClick={(e) => handleDeleteTrack(e, track.id)} className="p-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity" title="파일 삭제"><Icon name="trash" className="w-5 h-5" /></button>
                                 </div>
                             ))}
                         </div>
@@ -871,52 +622,32 @@ export default function App() {
                                 </div>
                             </div>
 
-                              {/* 메인 컨트롤러: 삼성폰 등 모바일에서도 겹치지 않게 최적화 */}
-                              <div className="flex flex-col md:grid md:grid-cols-3 items-center bg-black/20 p-3 md:p-4 rounded-2xl w-full">
-    
-                             {/* 모바일에서 한 줄로 모으기 위한 컨테이너 */}
-                              <div className="flex items-center justify-center w-full md:contents gap-x-3 sm:gap-x-6">
-        
-                             {/* 1. 좌측 그룹 (셔플, 반복) */}
-                             <div className="flex items-center justify-center md:justify-start md:flex-1 gap-1 md:gap-4 flex-shrink-0">
-                                <button onClick={() => setIsShuffled(!isShuffled)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>
-                                          🔀
-                                </button>
-                                <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
-                                         {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
-                                </button>
-                              </div>
-
-                           {/* 2. 중앙 그룹 (이전, 재생, 다음) */}
-                           <div className="flex items-center justify-center md:flex-1 gap-3 md:gap-8 flex-shrink-0">
-                              <button onClick={handlePrev} className="p-1 text-gray-200 active:text-cyan-400">
-                                  <Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/>
-                              </button>
-                              <button onClick={handlePlayPause} className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg transform active:scale-90 md:hover:scale-110 transition-all">
-                                  <Icon name={isPlaying ? 'pause' : 'play'} className="w-9 h-9 md:w-14 md:h-14 fill-current"/>
-                              </button>
-                              <button onClick={handleNext} className="p-1 text-gray-200 active:text-cyan-400">
-                                  <Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/>
-                              </button>
-                          </div>
-                      </div>
-
-                          {/* 3. 우측 그룹 (볼륨) - PC에서만 표시 */}
-                          <div className="hidden md:flex items-center justify-end gap-2 md:flex-1">
-                               <Icon name="volume" className="w-5 h-5 text-gray-400" />
-                          <div className="w-24">
-                             <input 
-                                type="range" min="0" max="1" step="0.01" value={volume} 
-                                onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                                className="w-full h-1.5 accent-cyan-400 cursor-pointer" 
-                            />
-                         </div>
-                     </div>
-                 </div>
+                            <div className="flex flex-col md:grid md:grid-cols-3 items-center bg-black/20 p-3 md:p-4 rounded-2xl w-full">
+                                <div className="flex items-center justify-center w-full md:contents gap-x-3 sm:gap-x-6">
+                                    <div className="flex items-center justify-center md:justify-start md:flex-1 gap-1 md:gap-4 flex-shrink-0">
+                                        <button onClick={() => setIsShuffled(!isShuffled)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${isShuffled ? 'opacity-100' : 'opacity-40'}`}>🔀</button>
+                                        <button onClick={() => setRepeatMode(prev => (prev + 1) % 3)} className={`p-1.5 text-2xl md:text-3xl transition-colors ${repeatMode !== RepeatMode.NONE ? 'opacity-100' : 'opacity-40'}`}>
+                                            {repeatMode === RepeatMode.ONE ? '🔂' : '🔁'}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center justify-center md:flex-1 gap-3 md:gap-8 flex-shrink-0">
+                                        <button onClick={handlePrev} className="p-1 text-gray-200 active:text-cyan-400"><Icon name="prev" className="w-8 h-8 md:w-10 md:h-10"/></button>
+                                        <button onClick={handlePlayPause} className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-cyan-400 text-black rounded-full shadow-lg transform active:scale-90 md:hover:scale-110 transition-all">
+                                            <Icon name={isPlaying ? 'pause' : 'play'} className="w-9 h-9 md:w-14 md:h-14 fill-current"/>
+                                        </button>
+                                        <button onClick={handleNext} className="p-1 text-gray-200 active:text-cyan-400"><Icon name="next" className="w-8 h-8 md:w-10 md:h-10"/></button>
+                                    </div>
+                                </div>
+                                <div className="hidden md:flex items-center justify-end gap-2 md:flex-1">
+                                    <Icon name="volume" className="w-5 h-5 text-gray-400" />
+                                    <div className="w-24">
+                                        <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-full h-1.5 accent-cyan-400 cursor-pointer" />
+                                    </div>
+                                </div>
+                            </div>
                           
                             <div className="flex items-center justify-between bg-black/20 p-2 rounded-xl">
                                 <div className="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar">
-                                    <button onClick={() => fileInputRef.current?.click()} className="p-2 sm:p-3 text-gray-400 hover:text-white flex-shrink-0" title="파일 불러오기"><Icon name="folder" /></button>
                                     <button onClick={() => setShowVisualizer(!showVisualizer)} className={`p-2 sm:p-3 flex-shrink-0 ${!showVisualizer ? 'text-cyan-400' : 'text-gray-400'}`} title="화면 모드 변경"><Icon name="gallery" /></button>
                                     <button onClick={() => setVisualizerModeIndex(p => (p + 1) % visualizerModes.length)} className="p-2 sm:p-3 text-gray-400 hover:text-white flex-shrink-0" title="시각화 효과 변경"><Icon name="chart-bar" /></button>
                                     <button onClick={() => setIsEqVisible(true)} className="p-2 sm:p-3 text-gray-400 hover:text-white flex-shrink-0" title="이퀄라이저"><Icon name="equalizer" /></button>
@@ -935,7 +666,6 @@ export default function App() {
                                             className="bg-gray-700/50 text-white text-xs sm:text-sm rounded-full pl-8 pr-2 py-1.5 w-20 sm:w-32 focus:w-28 sm:focus:w-48 transition-all focus:outline-none focus:ring-1 focus:ring-cyan-400 placeholder-gray-500 border border-transparent focus:bg-gray-700"
                                         />
                                     </div>
-                                    <button onClick={handleClearPlaylist} className="p-2 sm:p-3 text-gray-400 hover:text-white" title="앱 초기화"><Icon name="refresh" /></button>
                                 </div>
                             </div>
                         </div>
@@ -952,7 +682,6 @@ export default function App() {
                     x-webkit-airplay="allow"
                     autoPlay={false}
                 />
-                <input type="file" ref={fileInputRef} className="hidden" multiple accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac" onChange={handleFileChange} />
                 {isEqVisible && <Equalizer onClose={() => setIsEqVisible(false)} gains={eqGains} setGains={setEqGains} frequencies={eqFrequencies} />}
             </div>
         </div>
