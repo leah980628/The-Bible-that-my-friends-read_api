@@ -28,6 +28,14 @@ const bibleNames: Record<string, string> = {
   "65": "유다서", "66": "요한계시록"
 };
 
+// 1. Cloudflare R2 주소 설정
+const R2_BASE_URL = "https://pub-671da4d0ad7f4987a1126bed7db40f70.r2.dev/";
+
+// 2. R2에 업로드 완료된 성경 목록 (번호: 마지막 장수)
+const SUPPORTED_BIBLE_DATA: Record<string, number> = {
+  "42": 24, // 누가복음: 24장까지 업로드 완료
+};
+
 const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, 1);
