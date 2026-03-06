@@ -396,8 +396,14 @@ export default function App() {
             .filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.artist.toLowerCase().includes(searchTerm.toLowerCase()))
             .sort((a, b) => {
                 const dir = sortConfig.direction === 'asc' ? 1 : -1;
-                const valA = sortConfig.key === 'fileName' ? a.file.name : a.artist;
-                const valB = sortConfig.key === 'fileName' ? b.file.name : b.artist;
+                
+                // 물리적 파일이 없어도(클라우드 링크여도) 에러가 나지 않게 안전장치 추가
+                const nameA = a.file?.name || a.fileName || a.name || "";
+                const nameB = b.file?.name || b.fileName || b.name || "";
+                
+                const valA = sortConfig.key === 'fileName' ? nameA : a.artist;
+                const valB = sortConfig.key === 'fileName' ? nameB : b.artist;
+                
                 return valA.localeCompare(valB) * dir;
             });
     }, [playlist, searchTerm, sortConfig]);
