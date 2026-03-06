@@ -135,6 +135,41 @@ const ScocTextLogo = ({ className }: { className?: string }) => (
 );
 
 export default function App() {
+
+  // --- [여기서부터 복사하세요] ---
+  // 앱이 켜질 때 R2 클라우드에 있는 성경 리스트를 자동으로 만드는 일꾼입니다.
+  useEffect(() => {
+    const r2Tracks: Track[] = [];
+
+    // SUPPORTED_BIBLE_DATA에 적힌 "42": 24 정보를 읽어서 반복문을 돌립니다.
+    Object.entries(SUPPORTED_BIBLE_DATA).forEach(([bookCode, totalChapters]) => {
+      const bookName = bibleNames[bookCode] || "알 수 없는 성경";
+      
+      for (let i = 1; i <= totalChapters; i++) {
+        const chapterStr = i.toString().padStart(3, '0'); // 1 -> 001
+        const fileName = `${bookCode}_${chapterStr}.mp3`;
+        
+        r2Tracks.push({
+          id: `r2-${bookCode}-${i}`,
+          name: `${bookName} ${i}장`,
+          artist: '친구들이 들려주는 성경',
+          duration: 0,
+          url: `${R2_BASE_URL}${fileName}`, // 클라우드 주소 결합
+          fileName: fileName,
+          isRemote: true, // 클라우드 파일임을 표시
+        } as any);
+      }
+    });
+
+    // 만든 리스트를 재생 목록(Playlist)에 집어넣습니다.
+    setPlaylist(r2Tracks);
+    
+    // 만약 첫 곡이 선택되지 않았다면 자동으로 1장을 선택해둡니다.
+    if (currentTrackIndex === null && r2Tracks.length > 0) {
+      setCurrentTrackIndex(0);
+    }
+  }, []); 
+  // --- [여기까지 복사하세요] ---
     const [playlist, setPlaylist] = useState<Track[]>([]);
     const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
