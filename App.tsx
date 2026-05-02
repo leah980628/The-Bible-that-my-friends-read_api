@@ -34,6 +34,8 @@ const R2_BASE_URL = "https://pub-671da4d0ad7f4987a1126bed7db40f70.r2.dev/";
 // 2. R2에 업로드 완료된 성경 목록 (번호: 마지막 장수)
 const SUPPORTED_BIBLE_DATA: Record<string, number> = {
   "42": 24, // 누가복음: 24장까지 업로드 완료
+  "49": 6,  // 에베소서: 6장까지 업로드 완료
+  "50": 4,  // 빌립보서: 4장까지 업로드 완료
   "51": 4,  // 골로새서: 4장까지 업로드 완료
 };
 
